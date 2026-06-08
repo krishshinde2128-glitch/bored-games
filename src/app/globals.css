@@ -10,6 +10,12 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-wheat: #F5DFBB;
+  --color-dark-cyan: #0E9594;
+  --color-stormy-teal: #11686A;
+  --color-fiery-terracotta: #F2542D;
+  --color-espresso: #562C2C;
 }
 
 @media (prefers-color-scheme: dark) {
