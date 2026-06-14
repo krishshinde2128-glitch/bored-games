@@ -221,8 +221,8 @@ export function GuessWho({ roomId, currentUserId, roomData }: GuessWhoProps) {
     if (gameState.status === "selecting") {
       const newMystery = { ...gameState.mysteryCharacters, [currentUserId]: id };
       
-      let nextStatus = gameState.status;
-      let nextTurn = gameState.currentTurn;
+      let nextStatus: string = gameState.status;
+      let nextTurn: string = gameState.currentTurn;
       
       // If both have selected, transition to playing
       if (Object.keys(newMystery).length === 2) {
