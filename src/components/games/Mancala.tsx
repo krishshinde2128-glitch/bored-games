@@ -46,15 +46,31 @@ export function Mancala({ roomId, currentUserId, roomData }: MancalaProps) {
   // Initialize game state if not present
   useEffect(() => {
     if (!roomData.gameState && roomData.players[0] === currentUserId) {
-      const initialBoard = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0];
+      // 6 pits per side, each starting with 4 stones. 2 stores starting with 0.
+      const initialBoard = [
+        4, 4, 4, 4, 4, 4, 0, // Player 0's pits (0-5) and store (6)
+        4, 4, 4, 4, 4, 4, 0  // Player 1's pits (7-12) and store (13)
+      ];
+
+      let initialTurn = roomData.players[0];
+      const firstTurnSetting = roomData.settings?.firstTurn || "random";
+      if (firstTurnSetting === "random") {
+        initialTurn = Math.random() > 0.5 ? roomData.players[0] : roomData.players[1];
+      } else if (firstTurnSetting === "host") {
+        initialTurn = roomData.hostId;
+      } else {
+        initialTurn = roomData.players.find(p => p !== roomData.hostId) || roomData.players[0];
+      }
+
       updateGameState(roomId, {
         board: initialBoard,
-        currentTurn: roomData.players[0],
+        currentTurn: initialTurn,
         winner: null,
-        lastMovePitIndex: null
+        extraTurnNotice: false,
+        captureNotice: false
       });
     }
-  }, [roomData.gameState, roomId, currentUserId, roomData.players]);
+  }, [roomData.gameState, roomId, currentUserId, roomData.players, roomData.settings, roomData.hostId]);
 
   const gameState = roomData.gameState as MancalaGameState;
 

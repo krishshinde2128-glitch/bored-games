@@ -67,9 +67,8 @@ const BigExplosion = () => {
               opacity: 0,
             }}
             transition={{ duration: 1.2, ease: "easeOut" }}
-            className={`absolute w-5 h-5 rounded-full ${
-              i % 3 === 0 ? "bg-red-600 shadow-[0_0_20px_red]" : i % 3 === 1 ? "bg-orange-500 shadow-[0_0_20px_orange]" : "bg-yellow-400 shadow-[0_0_20px_yellow]"
-            }`}
+            className={`absolute w-5 h-5 rounded-full ${i % 3 === 0 ? "bg-red-600 shadow-[0_0_20px_red]" : i % 3 === 1 ? "bg-orange-500 shadow-[0_0_20px_orange]" : "bg-yellow-400 shadow-[0_0_20px_yellow]"
+              }`}
           />
         );
       })}
@@ -93,23 +92,35 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
   const [dragTarget, setDragTarget] = useState<{ x: number, y: number } | null>(null);
 
   const [recentlySunkShip, setRecentlySunkShip] = useState<Ship | null>(null);
-  const prevSunkShipsRef = React.useRef<string[]>([]);
+  const prevOppSunkLenRef = React.useRef<number>(0);
+  const prevMySunkLenRef = React.useRef<number>(0);
   const [activePowerUp, setActivePowerUp] = useState<string | null>(null);
   const [powerupToast, setPowerupToast] = useState<string | null>(null);
 
-  // Watch for newly sunk ships from opponent
+  // Watch for ANY newly sunk ships
   useEffect(() => {
     const oppSunk = gameState?.sunkShips?.[opponentId] || [];
-    if (oppSunk.length > prevSunkShipsRef.current.length) {
-      const newlySunkId = oppSunk[oppSunk.length - 1];
+    const mySunk = gameState?.sunkShips?.[currentUserId] || [];
+    
+    let newlySunkId: string | null = null;
+    
+    if (oppSunk.length > prevOppSunkLenRef.current) {
+      newlySunkId = oppSunk[oppSunk.length - 1].id;
+    } else if (mySunk.length > prevMySunkLenRef.current) {
+      newlySunkId = mySunk[mySunk.length - 1].id;
+    }
+
+    if (newlySunkId) {
       const sunkShip = INITIAL_SHIPS.find(s => s.id === newlySunkId);
       if (sunkShip) {
         setRecentlySunkShip(sunkShip);
         setTimeout(() => setRecentlySunkShip(null), 3000);
       }
     }
-    prevSunkShipsRef.current = oppSunk;
-  }, [gameState?.sunkShips, opponentId]);
+    
+    prevOppSunkLenRef.current = oppSunk.length;
+    prevMySunkLenRef.current = mySunk.length;
+  }, [gameState?.sunkShips, opponentId, currentUserId]);
 
   const LOCAL_STORAGE_KEY = `battleship_fleet_${roomId}_${currentUserId}`;
 
@@ -135,17 +146,27 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
       initialInventories[p] = [];
     });
 
+    let initialTurn = roomData.players[0];
+    const firstTurnSetting = roomData.settings?.firstTurn || "random";
+    if (firstTurnSetting === "random") {
+      initialTurn = Math.random() > 0.5 ? roomData.players[0] : roomData.players[1];
+    } else if (firstTurnSetting === "host") {
+      initialTurn = roomData.hostId;
+    } else {
+      initialTurn = roomData.players.find(p => p !== roomData.hostId) || roomData.players[0];
+    }
+
     await updateGameState(roomId, {
       status: "placement",
       readyPlayers: [],
-      currentTurn: roomData.players[0],
+      currentTurn: initialTurn,
       winner: null,
       shotsTargetingPlayer: initialShots,
       sunkShips: {},
       inventories: initialInventories,
       jammerTarget: null
     });
-  }, [roomId, roomData.players]);
+  }, [roomId, roomData.players, roomData.settings, roomData.hostId]);
 
   // Auto-initialize game state on mount (only host) to seamlessly transition from lobby
   useEffect(() => {
@@ -223,8 +244,8 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
         // Check for newly sunk ships
         const newSunkShips = [...(gameState.sunkShips?.[currentUserId] || [])];
         ships.forEach((ship) => {
-          if (!ship.placed || newSunkShips.includes(ship.id)) return;
-          
+          if (!ship.placed || newSunkShips.some(s => s.id === ship.id)) return;
+
           let allHit = true;
           for (let i = 0; i < ship.size; i++) {
             const sx = ship.orientation === "horizontal" ? ship.x + i : ship.x;
@@ -234,7 +255,7 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
             }
           }
           if (allHit) {
-            newSunkShips.push(ship.id);
+            newSunkShips.push({ id: ship.id, x: ship.x, y: ship.y, orientation: ship.orientation });
           }
         });
 
@@ -276,13 +297,13 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
     let myNewInventory = [...(newInventories[currentUserId] || [])];
     const idx = myNewInventory.indexOf("jammer");
     if (idx > -1) {
-       myNewInventory.splice(idx, 1);
-       await updateGameState(roomId, {
-         ...gameState,
-         inventories: { ...newInventories, [currentUserId]: myNewInventory },
-         jammerTarget: opponentId
-       });
-       setActivePowerUp(null);
+      myNewInventory.splice(idx, 1);
+      await updateGameState(roomId, {
+        ...gameState,
+        inventories: { ...newInventories, [currentUserId]: myNewInventory },
+        jammerTarget: opponentId
+      });
+      setActivePowerUp(null);
     }
   };
 
@@ -310,7 +331,7 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
       }
       usedPowerup = true;
     } else if (activePowerUp === "missiles") {
-      const targets = [[x, y], [x+1, y], [x-1, y], [x, y+1], [x, y-1]];
+      const targets = [[x, y], [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
       targets.forEach(([tx, ty]) => {
         if (tx >= 0 && tx < gridSize && ty >= 0 && ty < gridSize) {
           if (!opponentShots.some(s => s.x === tx && s.y === ty && s.type !== "uv") && !newShots.some(s => s.x === tx && s.y === ty)) {
@@ -324,37 +345,37 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
         for (let ty = y - 2; ty <= y + 2; ty++) {
           if (Math.abs(tx - x) + Math.abs(ty - y) <= 2) {
             if (tx >= 0 && tx < gridSize && ty >= 0 && ty < gridSize) {
-               if (!opponentShots.some(s => s.x === tx && s.y === ty && s.type !== "uv") && !newShots.some(s => s.x === tx && s.y === ty)) {
-                 newShots.push({ id: `shot_${Date.now()}_${Math.random()}`, x: tx, y: ty, status: "pending" });
-               }
+              if (!opponentShots.some(s => s.x === tx && s.y === ty && s.type !== "uv") && !newShots.some(s => s.x === tx && s.y === ty)) {
+                newShots.push({ id: `shot_${Date.now()}_${Math.random()}`, x: tx, y: ty, status: "pending" });
+              }
             }
           }
         }
       }
       usedPowerup = true;
     } else if (activePowerUp === "uv") {
-       newShots.push({ id: `shot_${Date.now()}_${Math.random()}`, x, y, status: "pending", type: "uv" });
-       usedPowerup = true;
+      newShots.push({ id: `shot_${Date.now()}_${Math.random()}`, x, y, status: "pending", type: "uv" });
+      usedPowerup = true;
     } else {
-       if (opponentShots.some(s => s.x === x && s.y === y && s.type !== "uv")) return;
-       newShots.push({ id: `shot_${Date.now()}_${Math.random()}`, x, y, status: "pending" });
+      if (opponentShots.some(s => s.x === x && s.y === y && s.type !== "uv")) return;
+      newShots.push({ id: `shot_${Date.now()}_${Math.random()}`, x, y, status: "pending" });
     }
 
     if (newShots.length === 0) return;
 
     if (!usedPowerup && isPowerupsMode) {
-       if (Math.random() <= 0.40) {
-         const roll = Math.random();
-         let drop = "bomber";
-         if (roll > 0.4) drop = "missiles";
-         if (roll > 0.7) drop = "uv";
-         if (roll > 0.85) drop = "jammer";
-         if (roll > 0.95) drop = "nuke";
-         
-         myNewInventory.push(drop);
-         setPowerupToast(`FOUND: ${drop.toUpperCase()}!`);
-         setTimeout(() => setPowerupToast(null), 3000);
-       }
+      if (Math.random() <= 0.40) {
+        const roll = Math.random();
+        let drop = "bomber";
+        if (roll > 0.4) drop = "missiles";
+        if (roll > 0.7) drop = "uv";
+        if (roll > 0.85) drop = "jammer";
+        if (roll > 0.95) drop = "nuke";
+
+        myNewInventory.push(drop);
+        setPowerupToast(`FOUND: ${drop.toUpperCase()}!`);
+        setTimeout(() => setPowerupToast(null), 3000);
+      }
     }
 
     if (usedPowerup && activePowerUp) {
@@ -458,7 +479,7 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
         <div
           key={`target-${x}-${y}`}
           onClick={() => handleFire(x, y)}
-          className="w-full h-full border border-cyan-800/50 bg-slate-900 hover:bg-cyan-900/40 cursor-pointer flex items-center justify-center relative transition-colors"
+          className={`w-full h-full border border-cyan-800/50 hover:bg-cyan-900/40 cursor-pointer flex items-center justify-center relative transition-colors ${shot && shot.status !== "pending" ? "z-20 bg-transparent" : "bg-slate-900"}`}
         >
           <AnimatePresence>
             {!isJammed && shot && shot.status !== "pending" && shot.type !== "uv" && (
@@ -476,11 +497,11 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
                 animate={{ opacity: 1 }}
                 className={`absolute inset-0 scale-[3] border-[1.5px] z-10 pointer-events-none flex items-center justify-center ${shot.status === "hit" ? "bg-green-500/20 border-green-500/80" : "bg-red-500/20 border-red-500/80"}`}
               >
-                 {shot.status === "hit" && (
-                   <span className="font-bold text-white text-[8px] drop-shadow-[0_0_2px_black] scale-[0.33]">
-                     {shot.hitCount}
-                   </span>
-                 )}
+                {shot.status === "hit" && (
+                  <span className="font-bold text-white text-[8px] drop-shadow-[0_0_2px_black] scale-[0.33]">
+                    {shot.hitCount}
+                  </span>
+                )}
               </motion.div>
             )}
             {!isJammed && shot && shot.status === "pending" && (
@@ -539,7 +560,7 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
 
   const renderMyFleetGrid = () => {
     return (
-      <div 
+      <div
         className="relative w-full aspect-square max-w-2xl mx-auto grid border-2 border-blue-900 rounded-sm bg-slate-900/50 bg-[url('/assets/battleship/water.jpg')] bg-cover bg-center"
         style={{ gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))` }}
       >
@@ -711,7 +732,7 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
         <div className="flex flex-col flex-1 gap-4">
           <div className="bg-slate-900 p-6 rounded-2xl border border-cyan-900/50 shadow-[0_0_30px_rgba(8,145,178,0.1)] relative">
             <h3 className="absolute -top-3 left-6 bg-slate-900 px-2 text-cyan-500 font-bold tracking-widest text-sm">TARGET RADAR</h3>
-            <div 
+            <div
               className={`relative w-full aspect-square max-w-2xl mx-auto grid border-2 border-cyan-800 rounded-sm bg-slate-950 bg-[url('/assets/battleship/water.jpg')] bg-cover bg-center transition-opacity ${isMyTurn && !gameState.shotsTargetingPlayer[opponentId]?.some(s => s.status === "pending") ? "opacity-100" : "opacity-50 pointer-events-none"}`}
               style={{ gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))` }}
             >
@@ -719,51 +740,93 @@ export function Battleship({ roomId, roomData, currentUserId }: BattleshipProps)
               <div className="absolute inset-0 rounded-full border border-cyan-500/10 animate-[ping_4s_cubic-bezier(0,0,0.2,1)_infinite] pointer-events-none m-4" />
               {Array.from({ length: gridSize * gridSize }).map((_, i) => renderGridCell(i % gridSize, Math.floor(i / gridSize), true))}
 
+              {/* Opponent Sunk Ships */}
+              {(gameState?.sunkShips?.[opponentId] || []).map((sunk) => {
+                const shipDef = INITIAL_SHIPS.find(s => s.id === sunk.id);
+                if (!shipDef) return null;
+                const isHorizontal = sunk.orientation === "horizontal";
+                const w = isHorizontal ? `${(shipDef.size / gridSize) * 100}%` : `${(1 / gridSize) * 100}%`;
+                const h = isHorizontal ? `${(1 / gridSize) * 100}%` : `${(shipDef.size / gridSize) * 100}%`;
+                const left = `${(sunk.x / gridSize) * 100}%`;
+                const top = `${(sunk.y / gridSize) * 100}%`;
+                
+                const imgStyle = !isHorizontal ? {
+                  width: `${shipDef.size * 100}%`,
+                  height: `${100 / shipDef.size}%`,
+                  transform: "translate(-50%, -50%) rotate(90deg)",
+                  left: "50%",
+                  top: "50%",
+                  position: "absolute" as const,
+                  maxWidth: "none",
+                  maxHeight: "none",
+                } : {
+                  width: "100%",
+                  height: "100%",
+                  position: "absolute" as const,
+                };
+
+                return (
+                  <div
+                    key={`opp_sunk_${sunk.id}`}
+                    className="absolute bg-red-600/20 border-2 border-red-500 rounded-sm flex items-center justify-center z-10 pointer-events-none shadow-[0_0_15px_red]"
+                    style={{ left, top, width: w, height: h }}
+                  >
+                    <img 
+                      src={`/assets/battleship/${sunk.id}.png`} 
+                      alt={sunk.id} 
+                      style={imgStyle}
+                      className="object-contain drop-shadow-md opacity-90 brightness-110"
+                    />
+                  </div>
+                )
+              })}
+
               {gameState?.jammerTarget === currentUserId && (
-                 <div className="absolute inset-0 z-50 pointer-events-none flex flex-col items-center justify-center bg-purple-950/60 backdrop-blur-[2px] border border-purple-500 overflow-hidden">
-                   <div className="text-purple-400 font-black text-2xl md:text-4xl tracking-widest text-center animate-pulse z-10 drop-shadow-[0_0_10px_purple]">
-                     RADAR SCRAMBLED
-                   </div>
-                   <div className="text-purple-300/80 font-mono text-sm mt-2 font-bold animate-pulse">
-                     FIRE BLINDLY
-                   </div>
-                 </div>
+                <div className="absolute inset-0 z-50 pointer-events-none flex flex-col items-center justify-center bg-black/95 backdrop-blur-xl border-2 border-purple-600 shadow-[inset_0_0_100px_rgba(88,28,135,0.8)] overflow-hidden">
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-900/30 via-black/80 to-black pointer-events-none" />
+                  <div className="text-purple-400 font-black text-2xl md:text-4xl tracking-widest text-center animate-pulse z-10 drop-shadow-[0_0_15px_purple]">
+                    RADAR SCRAMBLED
+                  </div>
+                  <div className="text-purple-300/80 font-mono text-sm mt-2 font-bold animate-pulse z-10">
+                    FIRE BLINDLY INTO THE FOG
+                  </div>
+                </div>
               )}
             </div>
             {powerupToast && (
-               <motion.div 
-                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                 className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white font-bold py-1 px-3 rounded shadow-lg z-50 whitespace-nowrap tracking-widest"
-               >
-                 {powerupToast}
-               </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white font-bold py-1 px-3 rounded shadow-lg z-50 whitespace-nowrap tracking-widest"
+              >
+                {powerupToast}
+              </motion.div>
             )}
           </div>
-          
+
           {isPowerupsMode && (
-             <div className="bg-slate-900 p-4 rounded-xl border border-purple-900/50 flex flex-col items-center">
-                <h4 className="text-purple-400 text-xs font-bold tracking-widest mb-3">POWER UPS</h4>
-                <div className="flex flex-wrap gap-2 justify-center">
-                   {(gameState.inventories?.[currentUserId] || []).map((item, i) => (
-                      <button 
-                        key={i} 
-                        onClick={() => {
-                          if (item === "jammer") {
-                             handleUseJammer();
-                          } else {
-                             setActivePowerUp(activePowerUp === item ? null : item);
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded text-xs font-bold font-mono transition-colors border ${activePowerUp === item ? 'bg-purple-600 text-white border-purple-400 shadow-[0_0_10px_purple]' : 'bg-slate-800 text-purple-300 border-slate-700 hover:bg-slate-700'}`}
-                      >
-                         {item.toUpperCase()}
-                      </button>
-                   ))}
-                   {(gameState.inventories?.[currentUserId] || []).length === 0 && (
-                      <span className="text-slate-600 text-xs font-mono">NO ITEMS</span>
-                   )}
-                </div>
-             </div>
+            <div className="bg-slate-900 p-4 rounded-xl border border-purple-900/50 flex flex-col items-center">
+              <h4 className="text-purple-400 text-xs font-bold tracking-widest mb-3">POWER UPS</h4>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {(gameState.inventories?.[currentUserId] || []).map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      if (item === "jammer") {
+                        handleUseJammer();
+                      } else {
+                        setActivePowerUp(activePowerUp === item ? null : item);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded text-xs font-bold font-mono transition-colors border ${activePowerUp === item ? 'bg-purple-600 text-white border-purple-400 shadow-[0_0_10px_purple]' : 'bg-slate-800 text-purple-300 border-slate-700 hover:bg-slate-700'}`}
+                  >
+                    {item.toUpperCase()}
+                  </button>
+                ))}
+                {(gameState.inventories?.[currentUserId] || []).length === 0 && (
+                  <span className="text-slate-600 text-xs font-mono">NO ITEMS</span>
+                )}
+              </div>
+            </div>
           )}
         </div>
 

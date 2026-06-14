@@ -11,11 +11,11 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  --color-wheat: #F5DFBB;
-  --color-dark-cyan: #0E9594;
-  --color-stormy-teal: #11686A;
-  --color-fiery-terracotta: #F2542D;
-  --color-espresso: #562C2C;
+  --color-wheat: #fdfec2;
+  --color-dark-cyan: #3a9b8d;
+  --color-stormy-teal: #342f33;
+  --color-fiery-terracotta: #8f2a31;
+  --color-espresso: #7c423b;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -61,6 +61,85 @@ const YOUTUBER_POOL = [
   { id: "randolph", name: "Randolph" }
 ];
 
+const YOUTUBER_UK_POOL = [
+  { id: "josh", name: "Josh" },
+  { id: "harry", name: "Harry" },
+  { id: "vik", name: "Vik" },
+  { id: "theobarker", name: "Theo Barker" },
+  { id: "stephentries", name: "Stephen Tries" },
+  { id: "taliamar", name: "Talia Mar" },
+  { id: "tobi", name: "Tobi" },
+  { id: "sharky", name: "Sharky" },
+  { id: "randolph", name: "Randolph" },
+  { id: "niko", name: "Niko" },
+  { id: "mrwhosetheboss", name: "Mrwhosetheboss" },
+  { id: "simon", name: "Simon" },
+  { id: "larzerbeam", name: "Larzerbeam" },
+  { id: "ksi", name: "KSI" },
+  { id: "georgeclarky", name: "George Clarky" },
+  { id: "faithkelly", name: "Faith Kelly" },
+  { id: "deji", name: "Deji" },
+  { id: "freya", name: "Freya" },
+  { id: "dannyaarons", name: "Danny Aarons" },
+  { id: "chunkz", name: "Chunkz" },
+  { id: "chrismd", name: "Chris MD" },
+  { id: "ethan", name: "Ethan" },
+  { id: "bambinobacky", name: "Bambino Backy" },
+  { id: "aj", name: "AJ" },
+  { id: "authertv", name: "AutherTv" },
+  { id: "filly", name: "Filly" },
+  { id: "sweetanita", name: "Sweet Anita" },
+  { id: "jme", name: "JME" },
+  { id: "lachlan", name: "Lachlan" },
+  { id: "ginge", name: "Ginge" },
+  { id: "ab", name: "AB" },
+  { id: "callux", name: "Callux" },
+  { id: "calfreezy", name: "Calfreezy" },
+  { id: "maxfosh", name: "Max Fosh" },
+  { id: "jacksucksatlife", name: "JackSucksAtLife" },
+  { id: "chip", name: "Chip" },
+  { id: "willne", name: "WillNE" }
+];
+
+const YOUTUBER_USA_POOL = [
+  // Add USA YouTubers here. (Make sure you put their PNG in public/assets/guesswho/youtubers/usa)
+  { id: "mrbeast", name: "MrBeast" },
+  { id: "loganpaul", name: "Logan Paul" },
+];
+
+const YOUTUBER_INDIA_POOL = [
+  { id: "samay", name: "Samay" },
+  { id: "tanmaybhat", name: "Tanmay Bhat" },
+  { id: "carryminati", name: "CarryMinati" },
+  { id: "beerbiceps", name: "BeerBiceps" },
+  { id: "rebelkid", name: "Rebel Kid" },
+  { id: "mostlysane", name: "MostlySane" },
+  { id: "bbkivines", name: "BB Ki Vines" },
+  { id: "ashishchanchlani", name: "Ashish Chanchlani" },
+  { id: "triggeredinsaan", name: "Triggered Insaan" },
+  { id: "harshbeniwal", name: "Harsh Beniwal" },
+  { id: "abhyudaya", name: "Abhyudaya" },
+  { id: "gautami", name: "Gautami" },
+  { id: "mythpat", name: "Mythpat" },
+  { id: "souravjoshi", name: "Sourav Joshi" },
+  { id: "zakirkhan", name: "Zakir Khan" },
+  { id: "rohanjoshi", name: "Rohan Joshi" },
+  { id: "scout", name: "Scout" },
+  { id: "pranitmore", name: "Pranit More" },
+  { id: "gamerfleet", name: "GamerFleet" },
+  { id: "fukrainsaan", name: "Fukra Insaan" },
+  { id: "mortal", name: "Mortal" },
+  { id: "elvishyadav", name: "Elvish Yadav" },
+  { id: "thugesh", name: "Thugesh" },
+  { id: "beyounick", name: "Be YouNick" }
+];
+
+const YOUTUBER_GAMING_POOL = [
+  // Add Gaming YouTubers here. (Make sure you put their PNG in public/assets/guesswho/youtubers/gaming)
+  { id: "pewdiepie", name: "PewDiePie" },
+  { id: "ninja", name: "Ninja" },
+];
+
 interface GuessWhoProps {
   roomId: string;
   currentUserId: string;
@@ -73,15 +152,28 @@ export function GuessWho({ roomId, currentUserId, roomData }: GuessWhoProps) {
 
   useEffect(() => {
     if (!roomData.gameState && roomData.players[0] === currentUserId && roomData.players.length === 2) {
-      const isYoutuber = roomData.settings?.deckEdition === "youtuber";
+      const deckEdition = roomData.settings?.deckEdition || "standard";
+      const isYoutuber = deckEdition.startsWith("youtuber");
       
       let generatedCharacters = [];
       if (isYoutuber) {
-        const shuffledYoutubers = [...YOUTUBER_POOL].sort(() => 0.5 - Math.random()).slice(0, 24);
+        let pool = YOUTUBER_POOL;
+        let folder = "youtubers";
+        
+        if (deckEdition === "youtuber_uk") { pool = YOUTUBER_UK_POOL; folder = "youtubers/uk"; }
+        if (deckEdition === "youtuber_usa") { pool = YOUTUBER_USA_POOL; folder = "youtubers/usa"; }
+        if (deckEdition === "youtuber_india") { pool = YOUTUBER_INDIA_POOL; folder = "youtubers/india"; }
+        if (deckEdition === "youtuber_gaming") { pool = YOUTUBER_GAMING_POOL; folder = "youtubers/gaming"; }
+
+        // If the pool is too small, fallback to the main list to prevent game crash
+        if (pool.length < 2) pool = YOUTUBER_POOL;
+
+        const shuffledYoutubers = [...pool].sort(() => 0.5 - Math.random()).slice(0, 24);
         generatedCharacters = shuffledYoutubers.map((yt, index) => ({
           id: String(index + 1),
           name: yt.name,
-          seed: yt.id
+          seed: yt.id,
+          folder: folder
         }));
       } else {
         const shuffledNames = [...NAME_POOL].sort(() => 0.5 - Math.random()).slice(0, 24);
@@ -93,16 +185,10 @@ export function GuessWho({ roomId, currentUserId, roomData }: GuessWhoProps) {
       }
 
       // Pick random distinct characters for P1 and P2
-      const shuffled = [...generatedCharacters].sort(() => 0.5 - Math.random());
-      const p1Char = shuffled[0].id;
-      const p2Char = shuffled[1].id;
-      
       updateGameState(roomId, {
-        mysteryCharacters: {
-          [roomData.players[0]]: p1Char,
-          [roomData.players[1]]: p2Char
-        },
-        currentTurn: roomData.players[0], // P1 starts
+        status: "selecting",
+        mysteryCharacters: {},
+        currentTurn: roomData.players[0], // P1 starts conceptually, but updated upon playing
         winner: null,
         boardCharacters: generatedCharacters
       });
@@ -121,14 +207,45 @@ export function GuessWho({ roomId, currentUserId, roomData }: GuessWhoProps) {
   const isMyTurn = gameState.currentTurn === currentUserId;
   
   const activeCharacters = gameState.boardCharacters || [];
-  const isYoutuberEdition = roomData.settings?.deckEdition === "youtuber";
+  const deckEdition = roomData.settings?.deckEdition || "standard";
+  const isYoutuberEdition = deckEdition.startsWith("youtuber");
   
   const myCharacterId = gameState.mysteryCharacters[currentUserId];
   const opponentId = roomData.players.find(p => p !== currentUserId) || "";
   const myCharacter = activeCharacters.find(c => c.id === myCharacterId);
 
-  const toggleFlip = (id: string) => {
+  const toggleFlip = async (id: string) => {
     if (isSpectator || gameState.winner) return;
+
+    // Character Selection Logic
+    if (gameState.status === "selecting") {
+      const newMystery = { ...gameState.mysteryCharacters, [currentUserId]: id };
+      
+      let nextStatus = gameState.status;
+      let nextTurn = gameState.currentTurn;
+      
+      // If both have selected, transition to playing
+      if (Object.keys(newMystery).length === 2) {
+        nextStatus = "playing";
+        // Decide first turn based on settings
+        const firstTurnSetting = roomData.settings?.firstTurn || "random";
+        if (firstTurnSetting === "random") {
+          nextTurn = Math.random() > 0.5 ? roomData.players[0] : roomData.players[1];
+        } else if (firstTurnSetting === "host") {
+          nextTurn = roomData.hostId;
+        } else {
+          nextTurn = roomData.players.find(p => p !== roomData.hostId) || roomData.players[0];
+        }
+      }
+      
+      await updateGameState(roomId, {
+        ...gameState,
+        status: nextStatus,
+        mysteryCharacters: newMystery,
+        currentTurn: nextTurn
+      });
+      return;
+    }
 
     if (isAccusationMode) {
       // Execute final guess
@@ -174,7 +291,15 @@ export function GuessWho({ roomId, currentUserId, roomData }: GuessWhoProps) {
       
       {/* Game Status Header */}
       <div className="mb-6 w-full flex flex-col md:flex-row items-center justify-between bg-dark-cyan/20 p-4 md:p-6 rounded-3xl border border-fiery-terracotta/30 backdrop-blur-md shadow-md gap-4">
-        {gameState.winner ? (
+        {gameState.status === "selecting" ? (
+          <div className="flex w-full items-center justify-center">
+            <h2 className="text-2xl font-black text-espresso animate-pulse text-center">
+              {gameState.mysteryCharacters[currentUserId] 
+                ? "Waiting for opponent to pick..." 
+                : "Select the character your opponent has to guess!"}
+            </h2>
+          </div>
+        ) : gameState.winner ? (
           <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-espresso to-stormy-teal">
             {gameState.winner === currentUserId ? "You Cracked the Case!" : `${roomData.playerNames[gameState.winner] || 'Opponent'} Wins!`}
           </h2>
@@ -197,7 +322,7 @@ export function GuessWho({ roomId, currentUserId, roomData }: GuessWhoProps) {
         )}
 
         {/* Accusation Mode Toggle */}
-        {!isSpectator && !gameState.winner && isMyTurn && (
+        {gameState.status === "playing" && !isSpectator && !gameState.winner && isMyTurn && (
           <button
             onClick={() => setIsAccusationMode(!isAccusationMode)}
             className={`px-6 py-2 font-bold rounded-xl border-2 transition-all shadow-md ${
@@ -213,59 +338,72 @@ export function GuessWho({ roomId, currentUserId, roomData }: GuessWhoProps) {
 
       <div className="flex flex-col lg:flex-row gap-8 w-full items-start">
         {/* Main Board */}
-        <div className={`flex-1 grid grid-cols-4 md:grid-cols-6 gap-3 md:gap-4 p-6 bg-wheat rounded-[2.5rem] border-4 transition-colors duration-500 shadow-xl ${
+        <div className={`flex-1 grid grid-cols-4 md:grid-cols-6 gap-x-3 gap-y-8 md:gap-x-4 md:gap-y-10 p-6 bg-wheat rounded-[2.5rem] border-4 transition-colors duration-500 shadow-xl ${
           isAccusationMode ? 'border-fiery-terracotta shadow-fiery-terracotta/20 bg-fiery-terracotta/5' : 'border-dark-cyan/30 shadow-dark-cyan/10'
-        }`} style={{ perspective: "1000px" }}>
+        }`} style={{ perspective: "1200px" }}>
           
           {activeCharacters.map((char) => {
             const isFlipped = flippedCards.has(char.id);
+            const isMySelection = gameState.status === "selecting" && gameState.mysteryCharacters[currentUserId] === char.id;
+            
             return (
-              <motion.button
-                key={char.id}
-                onClick={() => toggleFlip(char.id)}
-                disabled={isSpectator || !!gameState.winner}
-                className="relative aspect-[3/4] w-full cursor-pointer"
-                style={{ transformStyle: "preserve-3d", transformOrigin: "bottom center" }}
-                animate={{
-                  rotateX: isFlipped ? -85 : 0,
-                  y: isFlipped ? 10 : 0,
-                  filter: isFlipped ? 'brightness(0.4)' : 'brightness(1)'
-                }}
-                transition={{ type: "spring", stiffness: 200, damping: 20 }}
-              >
-                {/* The Card */}
-                <div className="absolute inset-0 bg-white rounded-xl border-2 border-dark-cyan/30 shadow-md flex flex-col overflow-hidden backface-hidden">
-                  <div className="bg-dark-cyan/10 p-0.5 border-b border-dark-cyan/20 h-[78%] flex items-center justify-center overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      src={
-                        isYoutuberEdition
-                          ? `/assets/guesswho/youtubers/${char.seed}.png`
-                          : `https://api.dicebear.com/7.x/avataaars/svg?seed=${char.seed}&backgroundColor=transparent`
-                      } 
-                      alt={char.name} 
-                      className="w-full h-full object-contain drop-shadow-sm" 
-                      onError={(e) => {
-                        if (isYoutuberEdition) {
-                          e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${char.name}&backgroundColor=transparent`;
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="h-[22%] flex items-center justify-center bg-wheat text-espresso font-black tracking-tight text-[10px] xs:text-xs md:text-sm border-t-2 border-espresso/5 text-center px-1 leading-tight overflow-hidden">
-                    {char.name}
-                  </div>
-                </div>
-                
-                {/* Back of Card (visible when flipped) */}
-                <div 
-                  className="absolute inset-0 bg-stormy-teal rounded-xl border-2 border-dark-cyan/50 shadow-inner flex items-center justify-center text-dark-cyan/20 text-4xl font-black"
-                  style={{ transform: "rotateX(180deg) translateZ(1px)", backfaceVisibility: "hidden" }}
+              <div key={char.id} className="relative aspect-[3/4] w-full">
+                {/* The Invisible Click Wrapper */}
+                <button
+                  onClick={() => toggleFlip(char.id)}
+                  disabled={isSpectator || !!gameState.winner || (gameState.status === "selecting" && !!gameState.mysteryCharacters[currentUserId])}
+                  className={`absolute inset-0 w-full h-full z-10 ${gameState.status === "selecting" && !gameState.mysteryCharacters[currentUserId] ? "cursor-pointer hover:scale-105 transition-transform" : "cursor-pointer"}`}
+                  aria-label={`Toggle ${char.name}`}
                 >
-                  ?
-                </div>
-              </motion.button>
-            )
+                  <span className="sr-only">Toggle card</span>
+                </button>
+
+                {/* The Animated Card */}
+                <motion.div
+                  className="w-full h-full pointer-events-none"
+                  style={{ transformStyle: "preserve-3d", transformOrigin: "bottom center" }}
+                  animate={{
+                    rotateX: isFlipped && gameState.status === "playing" ? -80 : 0,
+                    y: isFlipped && gameState.status === "playing" ? 25 : 0,
+                    scale: isFlipped && gameState.status === "playing" ? 0.85 : 1,
+                    filter: isFlipped && gameState.status === "playing" ? 'brightness(0.3)' : 'brightness(1)'
+                  }}
+                  transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                >
+                  {/* Front of Card */}
+                  <div className={`absolute inset-0 bg-white rounded-xl border-2 shadow-md flex flex-col overflow-hidden backface-hidden ${isMySelection ? 'border-stormy-teal shadow-[0_0_15px_#3d8b80]' : 'border-dark-cyan/30'}`}>
+                    <div className="bg-dark-cyan/10 p-0.5 border-b border-dark-cyan/20 h-[78%] flex items-center justify-center overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img 
+                        src={
+                          isYoutuberEdition
+                            ? `/assets/guesswho/${char.folder || 'youtubers'}/${char.seed}.png`
+                            : `https://api.dicebear.com/7.x/avataaars/svg?seed=${char.seed}&backgroundColor=transparent`
+                        } 
+                        alt={char.name} 
+                        className="w-full h-full object-cover object-top drop-shadow-sm"
+                        onError={(e) => {
+                          if (isYoutuberEdition) {
+                            e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${char.name}&backgroundColor=transparent`;
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="h-[22%] flex items-center justify-center bg-wheat text-espresso font-black tracking-tight text-[10px] xs:text-xs md:text-sm border-t-2 border-espresso/5 text-center px-1 leading-tight overflow-hidden">
+                      {char.name}
+                    </div>
+                  </div>
+                  
+                  {/* Back of Card (visible when flipped) */}
+                  <div 
+                    className="absolute inset-0 bg-stormy-teal rounded-xl border-2 border-dark-cyan/50 shadow-inner flex items-center justify-center text-dark-cyan/20 text-4xl font-black"
+                    style={{ transform: "rotateX(180deg) translateZ(1px)", backfaceVisibility: "hidden" }}
+                  >
+                    ?
+                  </div>
+                </motion.div>
+              </div>
+            );
           })}
         </div>
 
@@ -279,7 +417,7 @@ export function GuessWho({ roomId, currentUserId, roomData }: GuessWhoProps) {
                 <img 
                   src={
                     isYoutuberEdition
-                      ? `/assets/guesswho/youtubers/${myCharacter.seed}.png`
+                      ? `/assets/guesswho/${myCharacter.folder || 'youtubers'}/${myCharacter.seed}.png`
                       : `https://api.dicebear.com/7.x/avataaars/svg?seed=${myCharacter.seed}&backgroundColor=transparent`
                   } 
                   alt={myCharacter.name} 

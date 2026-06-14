@@ -5,6 +5,9 @@ interface User {
   displayName: string | null;
   photoURL: string | null;
   username?: string | null;
+  tag?: string;
+  fullTag?: string;
+  email?: string | null;
 }
 
 interface AuthState {
@@ -12,7 +15,7 @@ interface AuthState {
   setUser: (user: User | null) => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
-  setUsername: (username: string) => void;
+  setUsername: (username: string, fullTag?: string) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -20,5 +23,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => set({ user }),
   isLoading: true,
   setIsLoading: (isLoading) => set({ isLoading }),
-  setUsername: (username) => set((state) => ({ user: state.user ? { ...state.user, username } : null })),
+  setUsername: (username, fullTag) => set((state) => ({ 
+    user: state.user ? { ...state.user, username, fullTag: fullTag || state.user.fullTag } : null 
+  })),
 }));

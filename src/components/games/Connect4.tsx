@@ -21,14 +21,25 @@ export function Connect4({ roomId, currentUserId, roomData }: Connect4Props) {
   useEffect(() => {
     if (!roomData.gameState && roomData.players[0] === currentUserId) {
       const initialBoard = Array(ROWS * COLS).fill(0);
+      
+      let initialTurn = roomData.players[0];
+      const firstTurnSetting = roomData.settings?.firstTurn || "random";
+      if (firstTurnSetting === "random") {
+        initialTurn = Math.random() > 0.5 ? roomData.players[0] : roomData.players[1];
+      } else if (firstTurnSetting === "host") {
+        initialTurn = roomData.hostId;
+      } else {
+        initialTurn = roomData.players.find(p => p !== roomData.hostId) || roomData.players[0];
+      }
+
       updateGameState(roomId, {
         board: initialBoard,
-        currentTurn: roomData.players[0], // P1 starts
+        currentTurn: initialTurn,
         winner: null,
         winningCells: []
       });
     }
-  }, [roomData.gameState, roomId, currentUserId, roomData.players]);
+  }, [roomData.gameState, roomId, currentUserId, roomData.players, roomData.settings, roomData.hostId]);
 
   const gameState = roomData.gameState as Connect4GameState;
   if (!gameState) return <div className="text-center p-8 text-zinc-400 animate-pulse">Constructing Board...</div>;
@@ -136,7 +147,13 @@ export function Connect4({ roomId, currentUserId, roomData }: Connect4Props) {
               </span>
               <span className="text-fiery-terracotta/80 font-normal">'s Turn</span>
             </h2>
-            <div className={`w-6 h-6 rounded-full shadow-inner border-2 border-black/20 ${gameState.currentTurn === roomData.players[0] ? 'bg-stormy-teal shadow-[0_0_15px_rgba(140,9,2,0.5)]' : 'bg-wheat shadow-[0_0_15px_rgba(254,206,121,0.5)]'}`} />
+            <div 
+              className={`w-6 h-6 rounded-full border-2 border-black/20 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.3)] shadow-[0_0_15px_currentColor]`} 
+              style={{
+                backgroundColor: gameState.currentTurn === roomData.players[0] ? 'var(--color-fiery-terracotta)' : 'var(--color-dark-cyan)',
+                color: gameState.currentTurn === roomData.players[0] ? 'var(--color-fiery-terracotta)' : 'var(--color-dark-cyan)'
+              }}
+            />
           </div>
         )}
       </div>
@@ -166,9 +183,14 @@ export function Connect4({ roomId, currentUserId, roomData }: Connect4Props) {
                   className="absolute"
                   style={{ left: cIndex * CELL_SIZE, width: CELL_SIZE, height: CELL_SIZE, padding: '8px' }}
                 >
-                  <div className={`w-full h-full rounded-full border-[3px] border-black/20 shadow-[inset_0_-8px_10px_rgba(0,0,0,0.3)] ${
-                    cell === 1 ? 'bg-stormy-teal' : 'bg-wheat'
-                  } ${isWinning ? 'ring-4 ring-white shadow-[0_0_30px_rgba(255,255,255,1)] z-20 relative animate-pulse' : ''}`} />
+                  <div 
+                    className={`w-full h-full rounded-full border-[3px] border-black/20 shadow-[inset_0_-8px_10px_rgba(0,0,0,0.3)] ${
+                      isWinning ? 'ring-4 ring-white shadow-[0_0_30px_rgba(255,255,255,1)] z-20 relative animate-pulse' : ''
+                    }`}
+                    style={{
+                      backgroundColor: cell === 1 ? 'var(--color-fiery-terracotta)' : 'var(--color-dark-cyan)'
+                    }}
+                  />
                 </motion.div>
               )
             })

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { auth, googleProvider } from "@/lib/firebase/config";
 import { onAuthStateChanged, signInWithPopup } from "firebase/auth";
 import { useAuthStore } from "@/store/authStore";
-import { getUserProfile, createUserProfile } from "@/lib/firebase/users";
+import { getUserProfile, createUserProfile, assignTagIfMissing } from "@/lib/firebase/users";
 
 function UsernamePromptModal({ uid, defaultName, onSuccess }: { uid: string, defaultName: string, onSuccess: (name: string) => void }) {
   const [name, setName] = useState(defaultName.split(' ')[0] || "");
@@ -56,11 +56,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         const profile = await getUserProfile(currentUser.uid);
+        let tag = profile?.tag;
+        let fullTag = profile?.fullTag;
+
+        if (profile && profile.username && (!tag || !fullTag)) {
+          const newTags = await assignTagIfMissing(currentUser.uid, profile.username);
+          tag = newTags.tag;
+          fullTag = newTags.fullTag;
+        }
+
         setUser({
           uid: currentUser.uid,
           displayName: currentUser.displayName,
           photoURL: profile?.photoURL || currentUser.photoURL,
-          username: profile?.username || null
+          username: profile?.username || null,
+          tag,
+          fullTag,
+          email: currentUser.email
         });
       } else {
         setUser(null);

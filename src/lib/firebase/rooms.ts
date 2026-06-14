@@ -39,6 +39,7 @@ export interface GuessWhoCharacter {
 }
 
 export interface GuessWhoGameState {
+  status: "selecting" | "playing" | "finished";
   mysteryCharacters: Record<string, string>; // Maps userId -> their assigned character ID
   currentTurn: string; // userId whose turn it is to ask/pass
   winner: string | null;
@@ -54,6 +55,13 @@ export interface BattleshipShot {
   hitCount?: number;
 }
 
+export interface BattleshipSunkShip {
+  id: string;
+  x: number;
+  y: number;
+  orientation: "horizontal" | "vertical";
+}
+
 export interface BattleshipGameState {
   status: "placement" | "playing" | "finished";
   readyPlayers: string[]; // Player IDs who locked in their fleet
@@ -61,8 +69,8 @@ export interface BattleshipGameState {
   winner: string | null;
   // Key = Player ID being shot AT. Value = Array of shots directed at them.
   shotsTargetingPlayer: Record<string, BattleshipShot[]>;
-  // Key = Player ID. Value = Array of their ship IDs that have been sunk.
-  sunkShips?: Record<string, string[]>;
+  // Key = Player ID. Value = Array of their ships that have been sunk.
+  sunkShips?: Record<string, BattleshipSunkShip[]>;
   // Key = Player ID. Value = Array of collected powerup string IDs.
   inventories?: Record<string, string[]>;
   // Key = Player ID of the jammed player whose shots are randomized.
@@ -112,13 +120,14 @@ export interface MonopolyGameState {
   doublesCount: number;
   activeTrade: MonopolyTrade | null;
   activeAuction: MonopolyAuction | null;
+  drawnCard: { type: "chance" | "chest"; id: number } | null;
   winner: string | null;
 }
 
 export interface RoomSettings {
   allowSpectators: boolean;
   firstTurn: "host" | "random" | "opponent";
-  deckEdition?: "standard" | "youtuber";
+  deckEdition?: "standard" | "youtuber" | "youtuber_uk" | "youtuber_usa" | "youtuber_india" | "youtuber_gaming";
   battleshipMode?: "classic" | "powerups";
 }
 

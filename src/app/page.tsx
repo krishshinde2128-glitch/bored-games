@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ProfilePanel } from "@/components/dashboard/ProfilePanel";
+import { SettingsModal } from "@/components/dashboard/SettingsModal";
 import { RoomFeed } from "@/components/dashboard/RoomFeed";
 import { CreateRoomModal } from "@/components/dashboard/CreateRoomModal";
 import { Plus, ArrowRight } from "lucide-react";
 import { joinRoom } from "@/lib/firebase/rooms";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
+import { SocialDashboard } from "@/components/social/SocialDashboard";
 import { ChatSystem } from "@/components/chat/ChatSystem";
 import { GameType } from "@/lib/firebase/rooms";
 
@@ -25,7 +26,7 @@ const GAMES_LIST: { id: GameType; name: string; description: string; icon: strin
     name: "Ultimate Tic-Tac-Toe",
     description: "A 9x9 grid of pure strategy. Win the small boards to win the big board.",
     icon: "❌",
-    color: "from-fiery-terracotta to-dark-cyan text-espresso",
+    color: "from-fiery-terracotta to-dark-cyan text-wheat",
     status: "live"
   },
   {
@@ -113,8 +114,6 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column: Actions & Profile */}
           <div className="lg:col-span-4 space-y-8">
-            <ProfilePanel />
-            
             <div className="p-6 rounded-3xl bg-dark-cyan/20 border border-fiery-terracotta/30 shadow-md">
               <h3 className="text-lg font-bold text-espresso mb-4">Join via Code</h3>
               <form onSubmit={handleJoinSubmit} className="relative">
@@ -136,6 +135,8 @@ export default function Dashboard() {
               </form>
               {error && <p className="text-red-400 text-sm mt-2 font-medium">{error}</p>}
             </div>
+
+            <SocialDashboard />
           </div>
 
           {/* Right Column: Game Library & Feed */}
@@ -180,8 +181,7 @@ export default function Dashboard() {
         preselectedGame={selectedGameForModal}
       />
 
-      {/* Global Chat System - Shown only when inside a room */}
-      {/* activeRoomId logic removed; ChatSystem is now rendered in the individual room pages */}
+      <SettingsModal />
     </div>
   );
 }

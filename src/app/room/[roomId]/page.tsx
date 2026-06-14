@@ -44,26 +44,37 @@ export default function RoomPage() {
   if (loading) return <div className="min-h-screen bg-wheat p-8 text-center text-fiery-terracotta animate-pulse">Loading room...</div>;
   if (!roomData) return <div className="min-h-screen bg-wheat p-8 text-center text-stormy-teal font-bold">Room not found.</div>;
 
+  const isBattleship = roomData.gameType === "Battleship" && roomData.status !== "waiting";
+
   return (
-    <div className="min-h-screen bg-wheat text-espresso selection:bg-fiery-terracotta/30 p-6 relative overflow-x-hidden">
+    <div className={`min-h-screen ${isBattleship ? 'bg-slate-950 text-cyan-400 selection:bg-cyan-500/30' : 'bg-wheat text-espresso selection:bg-fiery-terracotta/30'} p-6 relative overflow-x-hidden transition-colors duration-1000`}>
       {/* Background Effects */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-dark-cyan/20 blur-[120px] rounded-full" />
+      <div className="fixed inset-0 pointer-events-none overflow-hidden transition-opacity duration-1000">
+        {isBattleship ? (
+          <>
+             <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[120px] rounded-full" />
+             <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-500/10 blur-[120px] rounded-full" />
+             {/* Radar grid lines for the background */}
+             <div className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.03)_1px,transparent_1px)] bg-[size:50px_50px]" />
+          </>
+        ) : (
+          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-dark-cyan/20 blur-[120px] rounded-full" />
+        )}
       </div>
 
       <header className="max-w-6xl mx-auto flex items-center justify-between mb-8 relative z-10">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => router.push('/')}
-            className="p-3 bg-dark-cyan hover:bg-fiery-terracotta hover:text-wheat rounded-xl transition-colors border border-fiery-terracotta/30 shadow-sm"
+            className={`p-3 rounded-xl transition-colors shadow-sm ${isBattleship ? 'bg-slate-900 hover:bg-cyan-900 text-cyan-400 border border-cyan-800' : 'bg-dark-cyan hover:bg-fiery-terracotta hover:text-wheat border border-fiery-terracotta/30'}`}
           >
             <ArrowLeft size={24} />
           </button>
           <div>
-            <h1 className="text-2xl font-black text-espresso">{roomData.gameType}</h1>
+            <h1 className={`text-2xl font-black ${isBattleship ? 'text-cyan-400' : 'text-espresso'}`}>{roomData.gameType}</h1>
             <div className="flex items-center gap-2">
-              <span className="text-espresso text-sm font-mono bg-dark-cyan px-2 py-0.5 rounded-md border border-fiery-terracotta/30 font-bold">ID: {roomData.roomId}</span>
-              <span className="text-fiery-terracotta font-bold text-sm">• {roomData.players.length}/{roomData.maxPlayers} Players</span>
+              <span className={`text-sm font-mono px-2 py-0.5 rounded-md font-bold ${isBattleship ? 'bg-slate-900 text-cyan-300 border border-cyan-800' : 'text-espresso bg-dark-cyan border border-fiery-terracotta/30'}`}>ID: {roomData.roomId}</span>
+              <span className={`font-bold text-sm ${isBattleship ? 'text-cyan-700' : 'text-fiery-terracotta'}`}>• {roomData.players.length}/{roomData.maxPlayers} Players</span>
             </div>
           </div>
         </div>

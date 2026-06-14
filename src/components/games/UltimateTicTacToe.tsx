@@ -14,16 +14,26 @@ export function UltimateTicTacToe({ roomId, currentUserId, roomData }: UltimateT
   // Initialize game state if not present. Only player 1 does this.
   useEffect(() => {
     if (!roomData.gameState && roomData.players[0] === currentUserId) {
+      let initialTurn = roomData.players[0];
+      const firstTurnSetting = roomData.settings?.firstTurn || "random";
+      if (firstTurnSetting === "random") {
+        initialTurn = Math.random() > 0.5 ? roomData.players[0] : roomData.players[1];
+      } else if (firstTurnSetting === "host") {
+        initialTurn = roomData.hostId;
+      } else {
+        initialTurn = roomData.players.find(p => p !== roomData.hostId) || roomData.players[0];
+      }
+
       updateGameState(roomId, {
         board: Array(81).fill(0),
         globalBoard: Array(9).fill(0),
         activeLocalBoardIndex: null, // Start with free turn anywhere
-        currentTurn: roomData.players[0], // P1 starts
+        currentTurn: initialTurn,
         winner: null,
         winningCells: { globalIndices: [], localIndices: [] }
       });
     }
-  }, [roomData.gameState, roomId, currentUserId, roomData.players]);
+  }, [roomData.gameState, roomId, currentUserId, roomData.players, roomData.settings, roomData.hostId]);
 
   const gameState = roomData.gameState as UltimateTicTacToeGameState;
   if (!gameState || !gameState.globalBoard) {
