@@ -36,6 +36,7 @@ export interface GuessWhoCharacter {
   id: string;
   name: string;
   seed: string;
+  folder?: string;
 }
 
 export interface GuessWhoGameState {
