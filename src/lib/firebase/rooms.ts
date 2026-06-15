@@ -30,6 +30,8 @@ export interface MancalaGameState {
   currentTurn: string; // userId
   winner: string | 'draw' | null;
   lastMovePitIndex: number | null;
+  extraTurnNotice?: boolean;
+  captureNotice?: boolean;
 }
 
 export interface GuessWhoCharacter {
