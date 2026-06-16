@@ -66,6 +66,7 @@ export function Mancala({ roomId, currentUserId, roomData }: MancalaProps) {
         board: initialBoard,
         currentTurn: initialTurn,
         winner: null,
+        lastMovePitIndex: null,
         extraTurnNotice: false,
         captureNotice: false
       });
