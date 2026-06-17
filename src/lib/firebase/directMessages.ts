@@ -79,6 +79,18 @@ export const sendChallenge = async (fromUid: string, toUid: string, gameId: stri
     type: 'challenge',
     challengeGameId: gameId
   });
+
+  const notificationId = doc(collection(db, "users", toUid, "notifications")).id;
+  await setDoc(doc(db, "users", toUid, "notifications", notificationId), {
+    id: notificationId,
+    type: 'challenge',
+    fromUid,
+    fromName: fromProfile.username,
+    gameName,
+    gameId,
+    createdAt: now,
+    read: false
+  });
 };
 
 export const subscribeToDirectMessages = (threadId: string, callback: (msgs: DirectMessage[]) => void) => {

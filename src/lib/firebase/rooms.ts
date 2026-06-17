@@ -6,6 +6,7 @@ import {
   arrayUnion,
   getDoc,
 } from "firebase/firestore";
+import { recordMatchResult } from "./stats";
 
 export type GameType = "Connect4" | "UltimateTicTacToe" | "GuessWho" | "Chess" | "Checkers" | "Othello" | "Battleship" | "Minesweeper" | "Go" | "Backgammon" | "Ludo" | "SnakesAndLadders" | "Mancala" | "DotsAndBoxes" | "Monopoly";
 
@@ -138,7 +139,7 @@ export interface Room {
   roomId: string;
   hostId: string;
   gameType: GameType;
-  status: "waiting" | "in-progress" | "finished";
+  status: "waiting" | "in-progress" | "finished" | "private_waiting";
   players: string[];
   playerNames: Record<string, string>;
   playerAvatars?: Record<string, string>;
@@ -167,7 +168,7 @@ export const GAME_LIMITS: Record<GameType, number> = {
   Monopoly: 4,
 };
 
-export const createRoom = async (hostId: string, hostName: string, gameType: GameType): Promise<string> => {
+export const createRoom = async (hostId: string, hostName: string, gameType: GameType, isPrivate: boolean = false): Promise<string> => {
   const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
   const roomRef = doc(db, "rooms", roomId);
 
@@ -175,7 +176,7 @@ export const createRoom = async (hostId: string, hostName: string, gameType: Gam
     roomId,
     hostId,
     gameType,
-    status: "waiting",
+    status: isPrivate ? "private_waiting" : "waiting",
     players: [hostId],
     playerNames: { [hostId]: hostName },
     spectators: [],
@@ -211,7 +212,7 @@ export const joinRoom = async (roomId: string, userId: string, userName: string,
     return true; // Already in room
   }
 
-  if (roomData.players.length < roomData.maxPlayers && roomData.status === "waiting") {
+  if (roomData.players.length < roomData.maxPlayers && (roomData.status === "waiting" || roomData.status === "private_waiting")) {
     // Join as player
     await updateDoc(roomRef, {
       players: arrayUnion(userId),
@@ -232,12 +233,23 @@ export const joinRoom = async (roomId: string, userId: string, userName: string,
 
 export const updateGameState = async (roomId: string, gameState: Connect4GameState | UltimateTicTacToeGameState | MancalaGameState | GuessWhoGameState | BattleshipGameState | MonopolyGameState) => {
   const roomRef = doc(db, "rooms", roomId);
+  
+  if (gameState.winner) {
+    const roomSnap = await getDoc(roomRef);
+    if (roomSnap.exists()) {
+      const roomData = roomSnap.data() as Room;
+      if (!roomData.gameState?.winner && roomData.players.length >= 2) {
+        await recordMatchResult(roomData.gameType, roomData.players[0], roomData.players[1], gameState.winner);
+      }
+    }
+  }
+
   await updateDoc(roomRef, {
     gameState
   });
 };
 
-export const updateRoomStatus = async (roomId: string, status: "waiting" | "in-progress" | "finished") => {
+export const updateRoomStatus = async (roomId: string, status: "waiting" | "in-progress" | "finished" | "private_waiting") => {
   const roomRef = doc(db, "rooms", roomId);
   await updateDoc(roomRef, { status });
 };

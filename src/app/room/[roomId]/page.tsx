@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
-import { Room } from "@/lib/firebase/rooms";
+import { Room, joinRoom } from "@/lib/firebase/rooms";
 import { useAuthStore } from "@/store/authStore";
 import { Connect4 } from "@/components/games/Connect4";
 import { UltimateTicTacToe } from "@/components/games/UltimateTicTacToe";
@@ -23,14 +23,26 @@ export default function RoomPage() {
   const { user } = useAuthStore();
   const [roomData, setRoomData] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
+  const hasAttemptedJoin = useRef(false);
 
   useEffect(() => {
     if (!roomId) return;
     
     // Subscribe to room updates in real-time
-    const unsub = onSnapshot(doc(db, "rooms", roomId), (docSnap) => {
+    const unsub = onSnapshot(doc(db, "rooms", roomId), async (docSnap) => {
       if (docSnap.exists()) {
-        setRoomData(docSnap.data() as Room);
+        const data = docSnap.data() as Room;
+        setRoomData(data);
+
+        // Auto-join if user is logged in and not already in room
+        if (user && !data.players.includes(user.uid) && !data.spectators.includes(user.uid) && !hasAttemptedJoin.current) {
+          hasAttemptedJoin.current = true;
+          try {
+            await joinRoom(roomId, user.uid, user.fullTag || "", user.photoURL || "");
+          } catch (e) {
+            console.error("Failed to auto-join:", e);
+          }
+        }
       } else {
         setRoomData(null); // Room doesn't exist
       }
@@ -38,7 +50,7 @@ export default function RoomPage() {
     });
 
     return () => unsub();
-  }, [roomId]);
+  }, [roomId, user]);
 
   if (!user) return <div className="min-h-screen bg-wheat p-8 text-center text-espresso">Please sign in first.</div>;
   if (loading) return <div className="min-h-screen bg-wheat p-8 text-center text-fiery-terracotta animate-pulse">Loading room...</div>;
@@ -81,7 +93,7 @@ export default function RoomPage() {
       </header>
 
       <main className="max-w-6xl mx-auto flex flex-col items-center justify-center relative z-10 w-full">
-        {roomData.status === "waiting" ? (
+        {roomData.status === "waiting" || roomData.status === "private_waiting" ? (
           <RoomLobby roomId={roomId} roomData={roomData} currentUserId={user.uid} />
         ) : roomData.gameType === "Connect4" ? (
           <Connect4 roomId={roomId} currentUserId={user.uid} roomData={roomData} />

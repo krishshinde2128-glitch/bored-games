@@ -9,6 +9,7 @@ import { getUserGlobalStats, GlobalStats } from "@/lib/firebase/stats";
 import { Edit2, Check, X, Camera, Settings, Trophy, UserCircle, Activity } from "lucide-react";
 import { db } from "@/lib/firebase/config";
 import { collection, query, getDocs } from "firebase/firestore";
+import { GAME_LIMITS, GameType } from "@/lib/firebase/rooms";
 
 export function SettingsModal() {
   const { user, setUser } = useAuthStore();
@@ -24,7 +25,7 @@ export function SettingsModal() {
 
   // Stats State
   const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
-  const [gameStats, setGameStats] = useState<{ id: string, wins: number, losses: number }[]>([]);
+  const [gameStats, setGameStats] = useState<{ id: string, wins: number, losses: number, gamesPlayed: number }[]>([]);
 
   useEffect(() => {
     if (isOpen && user && !globalStats) {
@@ -41,7 +42,8 @@ export function SettingsModal() {
             gStats.push({
               id: doc.id.replace("game_", ""),
               wins: data.wins || 0,
-              losses: data.losses || 0
+              losses: data.losses || 0,
+              gamesPlayed: data.gamesPlayed || (data.wins || 0) + (data.losses || 0)
             });
           }
         });
@@ -274,23 +276,21 @@ export function SettingsModal() {
                     </div>
                   </div>
 
-                  {/* Per Game Breakdown */}
-                  <div className="bg-white/50 rounded-3xl p-6 border border-espresso/10">
+                    <div className="bg-white/50 rounded-3xl p-6 border border-espresso/10">
                     <h3 className="text-xl font-black text-espresso mb-4">Game Breakdown</h3>
-                    {gameStats.length === 0 ? (
-                      <p className="text-espresso/60 italic">You haven't played any games yet.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {gameStats.map(stat => {
-                          const total = stat.wins + stat.losses;
-                          const winRate = total > 0 ? Math.round((stat.wins / total) * 100) : 0;
-                          return (
-                            <div key={stat.id} className="bg-white rounded-2xl p-4 border border-espresso/5 flex items-center justify-between shadow-sm">
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                      {(Object.keys(GAME_LIMITS) as GameType[]).map(gameId => {
+                        const stat = gameStats.find(s => s.id === gameId) || { id: gameId, wins: 0, losses: 0, gamesPlayed: 0 };
+                        const total = stat.gamesPlayed;
+                        const winRate = total > 0 ? Math.round((stat.wins / total) * 100) : 0;
+                        return (
+                          <div key={stat.id} className="bg-white rounded-2xl p-4 border border-espresso/5 flex items-center justify-between shadow-sm">
                               <span className="font-bold text-lg text-espresso capitalize">{stat.id}</span>
                               <div className="flex items-center gap-6">
                                 <div className="text-right">
                                   <span className="block text-emerald-500 font-black">{stat.wins} W</span>
                                   <span className="block text-red-500 font-bold text-sm">{stat.losses} L</span>
+                                  <span className="block text-espresso/60 font-bold text-xs mt-1 border-t border-espresso/10 pt-1">{total} Games</span>
                                 </div>
                                 <div className="w-16 h-16 rounded-full border-4 border-espresso/5 flex items-center justify-center relative">
                                   <svg className="absolute inset-0 w-full h-full -rotate-90">
@@ -304,7 +304,6 @@ export function SettingsModal() {
                           );
                         })}
                       </div>
-                    )}
                   </div>
 
                 </div>

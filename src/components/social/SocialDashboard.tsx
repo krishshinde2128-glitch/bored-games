@@ -3,9 +3,77 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { Friend, FriendRequest, subscribeToFriendsList, subscribeToPendingRequests, sendFriendRequest, acceptFriendRequest, declineFriendRequest } from "@/lib/firebase/social";
-import { UserPlus, Check, X, MessageCircle } from "lucide-react";
+import { UserPlus, Check, X, MessageCircle, Swords, BarChart2 } from "lucide-react";
 import { DirectMessageModal } from "./DirectMessageModal";
+import { H2HStatsModal } from "./H2HStatsModal";
+import { createRoom, GameType, GAME_LIMITS } from "@/lib/firebase/rooms";
+import { sendChallenge } from "@/lib/firebase/directMessages";
+import { useRouter } from "next/navigation";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase/config";
 
+function ChallengeModal({ 
+  friendUid, 
+  friendTag, 
+  onClose,
+  currentUserId,
+  currentUserTag,
+  onChallengeSent
+}: { 
+  friendUid: string; 
+  friendTag: string; 
+  onClose: () => void;
+  currentUserId: string;
+  currentUserTag: string;
+  onChallengeSent: (roomId: string) => void;
+}) {
+  const [isSending, setIsSending] = useState(false);
+
+  const handleChallenge = async (gameType: GameType) => {
+    if (isSending) return;
+    setIsSending(true);
+    try {
+      const roomId = await createRoom(currentUserId, currentUserTag, gameType, true);
+      await sendChallenge(currentUserId, friendUid, roomId, gameType);
+      onChallengeSent(roomId);
+      onClose(); // Close the modal so the user can continue using the dashboard
+    } catch (err) {
+      console.error(err);
+      setIsSending(false);
+    }
+  };
+
+  const games = Object.keys(GAME_LIMITS) as GameType[];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-wheat w-full sm:w-[400px] flex flex-col rounded-3xl shadow-2xl overflow-hidden border-2 border-fiery-terracotta/30">
+        <div className="bg-fiery-terracotta text-wheat p-4 flex justify-between items-center shadow-md">
+          <div>
+            <h3 className="font-bold text-lg">Challenge {friendTag}</h3>
+            <p className="text-xs text-wheat/80">Select a game</p>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-4 overflow-y-auto max-h-[60vh] custom-scrollbar grid grid-cols-2 gap-2">
+          {games.map(g => (
+            <button 
+              key={g}
+              onClick={() => handleChallenge(g)}
+              disabled={isSending}
+              className="bg-dark-cyan/10 hover:bg-stormy-teal text-espresso hover:text-wheat p-3 rounded-xl border border-dark-cyan/20 transition-colors font-bold text-sm text-left flex items-center gap-2"
+            >
+              <Swords size={16} />
+              {g.replace(/([A-Z])/g, ' $1').trim()}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 export function SocialDashboard() {
   const { user } = useAuthStore();
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -13,6 +81,22 @@ export function SocialDashboard() {
   const [addTag, setAddTag] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
   const [activeChatUser, setActiveChatUser] = useState<{ uid: string, fullTag: string } | null>(null);
+  const [activeChallengeUser, setActiveChallengeUser] = useState<{ uid: string, fullTag: string } | null>(null);
+  const [activeStatsUser, setActiveStatsUser] = useState<{ uid: string, fullTag: string } | null>(null);
+  const [waitingRoomId, setWaitingRoomId] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!waitingRoomId) return;
+    const unsub = onSnapshot(doc(db, "rooms", waitingRoomId), (snap) => {
+      const room = snap.data();
+      if (room && room.players.length > 1) {
+        setWaitingRoomId(null);
+        router.push(`/room/${waitingRoomId}`);
+      }
+    });
+    return () => unsub();
+  }, [waitingRoomId, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -94,12 +178,29 @@ export function SocialDashboard() {
               {friends.map(friend => (
                 <div key={friend.uid} className="flex items-center justify-between bg-wheat/80 p-3 rounded-xl shadow-sm border border-fiery-terracotta/10 group hover:border-stormy-teal transition-colors">
                   <span className="text-sm font-bold text-espresso">{friend.fullTag}</span>
-                  <button 
-                    onClick={() => setActiveChatUser({ uid: friend.uid, fullTag: friend.fullTag })}
-                    className="text-dark-cyan p-1.5 rounded-lg hover:bg-dark-cyan hover:text-wheat transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    <MessageCircle size={16} />
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => setActiveStatsUser({ uid: friend.uid, fullTag: friend.fullTag })}
+                      className="text-emerald-600 p-1.5 rounded-lg hover:bg-emerald-600 hover:text-wheat transition-colors"
+                      title="Stats vs Friend"
+                    >
+                      <BarChart2 size={16} />
+                    </button>
+                    <button 
+                      onClick={() => setActiveChallengeUser({ uid: friend.uid, fullTag: friend.fullTag })}
+                      className="text-fiery-terracotta p-1.5 rounded-lg hover:bg-fiery-terracotta hover:text-wheat transition-colors"
+                      title="Challenge"
+                    >
+                      <Swords size={16} />
+                    </button>
+                    <button 
+                      onClick={() => setActiveChatUser({ uid: friend.uid, fullTag: friend.fullTag })}
+                      className="text-dark-cyan p-1.5 rounded-lg hover:bg-dark-cyan hover:text-wheat transition-colors"
+                      title="Message"
+                    >
+                      <MessageCircle size={16} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -112,6 +213,26 @@ export function SocialDashboard() {
           friendUid={activeChatUser.uid} 
           friendTag={activeChatUser.fullTag} 
           onClose={() => setActiveChatUser(null)} 
+        />
+      )}
+
+      {activeChallengeUser && user && (
+        <ChallengeModal 
+          friendUid={activeChallengeUser.uid}
+          friendTag={activeChallengeUser.fullTag}
+          currentUserId={user.uid}
+          currentUserTag={user.fullTag || ""}
+          onClose={() => setActiveChallengeUser(null)}
+          onChallengeSent={(roomId) => setWaitingRoomId(roomId)}
+        />
+      )}
+
+      {activeStatsUser && user && (
+        <H2HStatsModal
+          currentUserId={user.uid}
+          friendUid={activeStatsUser.uid}
+          friendTag={activeStatsUser.fullTag}
+          onClose={() => setActiveStatsUser(null)}
         />
       )}
     </div>

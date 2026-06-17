@@ -66,9 +66,7 @@ export function Mancala({ roomId, currentUserId, roomData }: MancalaProps) {
         board: initialBoard,
         currentTurn: initialTurn,
         winner: null,
-        lastMovePitIndex: null,
-        extraTurnNotice: false,
-        captureNotice: false
+        lastMovePitIndex: null
       });
     }
   }, [roomData.gameState, roomId, currentUserId, roomData.players, roomData.settings, roomData.hostId]);
@@ -313,13 +311,24 @@ export function Mancala({ roomId, currentUserId, roomData }: MancalaProps) {
   const isWaitingForOpponent = roomData.players.length < 2;
   const boardRect = boardRef.current?.getBoundingClientRect();
 
+  const isFlipped = isPlayer2;
+  const topPlayerId = isFlipped ? roomData.players[0] : roomData.players[1];
+  const bottomPlayerId = isFlipped ? roomData.players[1] : roomData.players[0];
+  const topPlayerName = roomData.playerNames?.[topPlayerId] || (isFlipped ? "Player 1" : "Player 2");
+  const bottomPlayerName = roomData.playerNames?.[bottomPlayerId] || (isFlipped ? "Player 2" : "Player 1");
+
+  const leftStoreIndex = isFlipped ? 6 : 13;
+  const rightStoreIndex = isFlipped ? 13 : 6;
+  const topPits = isFlipped ? [5, 4, 3, 2, 1, 0] : [12, 11, 10, 9, 8, 7];
+  const bottomPits = isFlipped ? [7, 8, 9, 10, 11, 12] : [0, 1, 2, 3, 4, 5];
+
   return (
     <div className="flex flex-col items-center justify-center w-full p-4 md:p-8 relative">
       
       {/* Header */}
-      <div className="mb-12 text-center min-h-[5rem] flex flex-col justify-center relative z-10">
+      <div className="mb-4 text-center min-h-[3rem] flex flex-col justify-center relative z-10">
         {isWaitingForOpponent ? (
-          <h2 className="text-2xl font-bold text-fiery-terracotta animate-pulse bg-dark-cyan/20 px-6 py-2 rounded-full border border-fiery-terracotta/30 shadow-md">Waiting for opponent to join...</h2>
+          <h2 className="text-2xl font-bold text-fiery-terracotta animate-pulse bg-dark-cyan/20 px-6 py-2 rounded-full border border-fiery-terracotta/30 shadow-md inline-block">Waiting for opponent to join...</h2>
         ) : gameState.winner ? (
           <motion.h2 
             initial={{ scale: 0.8, opacity: 0 }}
@@ -331,42 +340,40 @@ export function Mancala({ roomId, currentUserId, roomData }: MancalaProps) {
               : `${gameState.winner === roomData.players[0] ? (roomData.playerNames?.[roomData.players[0]] || "Player 1") : (roomData.playerNames?.[roomData.players[1]] || "Player 2")} Wins!`}
           </motion.h2>
         ) : (
-          <div className="flex items-center justify-center gap-6 bg-dark-cyan/20 px-8 py-4 rounded-3xl border border-fiery-terracotta/30 backdrop-blur-md shadow-xl shadow-fiery-terracotta/10">
-            <h2 className="text-2xl md:text-3xl font-bold text-espresso flex items-center gap-2">
-              <span className={`text-2xl md:text-3xl font-bold ${isMyTurn ? 'text-transparent bg-clip-text bg-gradient-to-r from-stormy-teal to-fiery-terracotta drop-shadow-sm' : 'text-fiery-terracotta/80'}`}>
-                {gameState.currentTurn === roomData.players[0] 
-                  ? (roomData.playerNames?.[roomData.players[0]] || "Player 1") 
-                  : (roomData.playerNames?.[roomData.players[1]] || "Player 2")}
-              </span>
-              <span className="text-fiery-terracotta font-normal">'s Turn</span>
-            </h2>
-            {isAnimating && <span className="text-fiery-terracotta/80 animate-pulse font-bold text-sm uppercase tracking-widest">Sowing...</span>}
+          <div className="h-8">
+            {isAnimating && <span className="text-fiery-terracotta/80 animate-pulse font-bold text-xl uppercase tracking-widest">Sowing...</span>}
           </div>
         )}
+      </div>
+
+      {/* Top Player Name */}
+      <div className={`text-4xl md:text-6xl mb-12 font-serif font-black tracking-widest transition-all duration-300 ${gameState.currentTurn === topPlayerId ? 'opacity-100 text-fiery-terracotta drop-shadow-[0_4px_8px_rgba(177,74,54,0.4)] scale-110' : 'opacity-40 text-espresso scale-100'}`}>
+        {topPlayerName} {topPlayerId === currentUserId && "(You)"}
       </div>
 
       {/* Mancala Board */}
       <div 
         ref={boardRef}
-        className="relative bg-wheat backdrop-blur-3xl p-8 md:p-12 rounded-[4rem] shadow-2xl shadow-fiery-terracotta/10 border border-fiery-terracotta/30 flex items-center gap-8 md:gap-10"
+        className="relative bg-wheat backdrop-blur-3xl p-8 md:p-12 rounded-[4rem] shadow-2xl shadow-fiery-terracotta/10 border border-fiery-terracotta/30 flex items-center gap-6 md:gap-10"
       >
-        {/* P2 Store (Left) */}
-        {renderPit(13, true)}
+        {/* Left Store */}
+        {renderPit(leftStoreIndex, true)}
 
         {/* Small Pits Grid */}
-        <div className="flex flex-col gap-6">
-          {/* P2 Pits (Top row, goes right to left from P2's perspective, so indices 12 down to 7) */}
-          <div className="flex gap-4">
-            {[12, 11, 10, 9, 8, 7].map(i => renderPit(i))}
+        <div className="flex flex-col gap-6 items-center">
+          {/* Top Pits */}
+          <div className="flex gap-2 md:gap-4">
+            {topPits.map(i => renderPit(i))}
           </div>
-          {/* P1 Pits (Bottom row, indices 0 to 5) */}
-          <div className="flex gap-4">
-            {[0, 1, 2, 3, 4, 5].map(i => renderPit(i))}
+
+          {/* Bottom Pits */}
+          <div className="flex gap-2 md:gap-4">
+            {bottomPits.map(i => renderPit(i))}
           </div>
         </div>
 
-        {/* P1 Store (Right) */}
-        {renderPit(6, true)}
+        {/* Right Store */}
+        {renderPit(rightStoreIndex, true)}
 
         {/* Flying Pebble Overlay */}
         <AnimatePresence>
@@ -396,6 +403,11 @@ export function Mancala({ roomId, currentUserId, roomData }: MancalaProps) {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* Bottom Player Name */}
+      <div className={`text-4xl md:text-6xl mt-12 font-serif font-black tracking-widest transition-all duration-300 ${gameState.currentTurn === bottomPlayerId ? 'opacity-100 text-fiery-terracotta drop-shadow-[0_4px_8px_rgba(177,74,54,0.4)] scale-110' : 'opacity-40 text-espresso scale-100'}`}>
+        {bottomPlayerName} {bottomPlayerId === currentUserId && "(You)"}
       </div>
 
     </div>
