@@ -155,9 +155,9 @@ export function GuessWho({ roomId, currentUserId, roomData }: GuessWhoProps) {
       const deckEdition = roomData.settings?.deckEdition || "standard";
       const isYoutuber = deckEdition.startsWith("youtuber");
       
-      let generatedCharacters = [];
+      let generatedCharacters: any[] = [];
       if (isYoutuber) {
-        let pool = YOUTUBER_POOL;
+        let pool: { id: string; name: string; folder?: string }[] = YOUTUBER_POOL;
         let folder = "youtubers";
         
         if (deckEdition === "youtuber_uk") { pool = YOUTUBER_UK_POOL; folder = "youtubers/uk"; }
